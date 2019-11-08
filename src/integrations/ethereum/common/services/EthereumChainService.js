@@ -18,7 +18,7 @@ class EthereumChainService extends EventEmitter {
   }
 
   start() {
-    if (this._child === null) {
+    if (this._child == null) {
       let chainPath = path.join(__static, "node", "chain", "chain.js");
       const options = {
         stdio: ["pipe", "pipe", "pipe", "ipc"],
@@ -27,7 +27,7 @@ class EthereumChainService extends EventEmitter {
       this._child = fork(chainPath, forkArgs, options);
       this._child.on("message", message => {
         if (message.type == "process-started") {
-          this.emit("start");
+          this.emit("message", "start");
         }
         if (message.type == "server-started") {
           this._serverStarted = true;
@@ -35,15 +35,15 @@ class EthereumChainService extends EventEmitter {
         if (message.type == "server-stopped") {
           this._serverStarted = false;
         }
-        this.emit(message.type, message.data);
+        this.emit("message", message.type, message.data);
       });
       this._child.on("error", error => {
-        this.emit("error", error);
+        this.emit("message", "error", error);
       });
       this._child.on("exit", this._exitHandler);
       this._child.stdout.on("data", data => {
         // Remove all \r's and the final line ending
-        this.emit(
+        this.emit("message", 
           "stdout",
           data
             .toString()
@@ -53,7 +53,7 @@ class EthereumChainService extends EventEmitter {
       });
       this._child.stderr.on("data", data => {
         // Remove all \r's and the final line ending
-        this.emit(
+        this.emit("message", 
           "stderr",
           data
             .toString()
@@ -62,12 +62,12 @@ class EthereumChainService extends EventEmitter {
         );
       });
     } else {
-      this.emit("start");
+      this.emit("message", "start");
     }
   }
 
-  async startServer(_workspaceDirectory, settings) {
-    if (this._child !== null) {
+  async startServer(settings, _workspaceDirectory) {
+    if (this._child != null) {
       const options = this._ganacheCoreOptionsFromGanacheSettingsObject(settings);
       this._child.send({
         type: "start-server",
@@ -81,7 +81,7 @@ class EthereumChainService extends EventEmitter {
       this.once("server-stopped", () => {
         resolve();
       });
-      if (this._child !== null) {
+      if (this._child != null) {
         this._child.send({
           type: "stop-server",
         });
@@ -139,12 +139,12 @@ class EthereumChainService extends EventEmitter {
 
   _exitHandler(code, signal) {
     if (code != null) {
-      this.emit(
+      this.emit("message", 
         "error",
         `Blockchain process exited prematurely with code '${code}', due to signal '${signal}'.`,
       );
     } else {
-      this.emit(
+      this.emit("message", 
         "error",
         `Blockchain process exited prematurely due to signal '${signal}'.`,
       );
